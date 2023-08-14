@@ -39,7 +39,7 @@ data_filter_periodo <- data_filter %>%
 acidentes <- st_as_sf(x = data_filter_periodo, 
                       coords = c("longitude", "latitude"), 
                       crs = 4674)
-#o crs 4326 que utilizamos é o sistema de coordenadas geográficas não projetadas WGS84
+#o crs 4674 que utilizamos é o sistema de coordenadas geográficas não projetadas SIRGAS2000
 
 # Plotando os pontos com ggplot:
 acidentes %>%
@@ -64,7 +64,7 @@ tm_shape(shp = acidentes) +
 
 #Outra forma de fazer é utilizar um arquivo ShapeFile com formas geométricas, polígonos
 # Carregando um shapefile:
-shp_sc <- readOGR(dsn = "C:/Users/Usuário/Documents/ciencia de dados/PR_Municipios_2020", 
+shp_sc <- readOGR(dsn = "C:/Users/Usuário/Documents/ciencia de dados/Análise em R/PR_Municipios_2020", 
                   layer = "PR_Municipios_2020",
                   encoding = "UTF-8", 
                   use_iconv = TRUE)
@@ -77,7 +77,7 @@ tm_shape(shp = shp_sc) +
 # tmap_mode("plot")
 
 #unindo as duas observações com ggplot:
-cidades <- st_read("C:/Users/Usuário/Documents/ciencia de dados/PR_Municipios_2020/PR_Municipios_2020.shp")
+cidades <- st_read("C:/Users/Usuário/Documents/ciencia de dados/Análise em R/PR_Municipios_2020/PR_Municipios_2020.shp")
 cidades %>% st_transform(4674) %>%
   ggplot() +
   geom_sf() +
@@ -91,11 +91,8 @@ tm_shape(shp = cidades) +
 
 cidades <- cidades %>% st_transform(4674)
 acidentes <- acidentes %>% st_transform(4674)
-#cidades <- cidades %>% rename("municipio")
 cidades_acidentes <- cidades  %>% 
   st_join(acidentes) 
-#cidades_num_acidentes <-  cidades_acidentes %>% group_by(municipio) %>% 
-# tally() 
 cidades_num_acidentes <- cidades_acidentes %>%
   filter(municipio != "NA") %>%
   group_by(municipio) %>%

@@ -16,7 +16,7 @@ library(lubridate)
 
 
 data <- read.csv("C:/Users/Usuário/Downloads/datatran2019.csv",sep=";",dec = ",",  stringsAsFactors = FALSE)
-data_filter <- data[data$uf == "RS",]
+data_filter <- data[data$uf == "SC",]
 # Se eu quisesse filtrar só os acidentes que tem mortos:
 data_filter <- data_filter[data_filter$mortos >= 1,]
 
@@ -38,8 +38,8 @@ data_filter_periodo <- data_filter %>%
 # Criando um objeto do tipo sf a partir de um data frame:
 acidentes <- st_as_sf(x = data_filter_periodo, 
                       coords = c("longitude", "latitude"), 
-                      crs = 4674)
-#o crs 4674 que utilizamos é o sistema de coordenadas geográficas não projetadas SIRGAS2000
+                      crs = 4326)
+#o crs 4326 que utilizamos é o sistema de coordenadas geográficas não projetadas WGS84
 
 # Plotando os pontos com ggplot:
 acidentes %>%
@@ -48,7 +48,7 @@ acidentes %>%
 
 # também é possível plotar com a projeção de Mercator, utilizando o st_transform:
 
-acidentes %>% st_transform(4674) %>%
+acidentes %>% st_transform(3857) %>%
   ggplot() +
   geom_sf()
 
@@ -64,8 +64,8 @@ tm_shape(shp = acidentes) +
 
 #Outra forma de fazer é utilizar um arquivo ShapeFile com formas geométricas, polígonos
 # Carregando um shapefile:
-shp_sc <- readOGR(dsn = "C:/Users/Usuário/Documents/ciencia de dados/Análise em R/RS_Municipios_2020", 
-                  layer = "RS_Municipios_2020",
+shp_sc <- readOGR(dsn = "C:/Users/Usuário/Documents/ciencia de dados/Análise em R/shapefile_sc", 
+                  layer = "sc_state",
                   encoding = "UTF-8", 
                   use_iconv = TRUE)
 
@@ -77,8 +77,8 @@ tm_shape(shp = shp_sc) +
 # tmap_mode("plot")
 
 #unindo as duas observações com ggplot:
-cidades <- st_read("C:/Users/Usuário/Documents/ciencia de dados/Análise em R/RS_Municipios_2020/RS_Municipios_2020.shp")
-cidades %>% st_transform(4674) %>%
+cidades <- st_read("C:/Users/Usuário/Documents/ciencia de dados/Análise em R/shapefile_sc/sc_state.shp")
+cidades %>% st_transform(4326) %>%
   ggplot() +
   geom_sf() +
   geom_sf(data=acidentes)
@@ -89,24 +89,27 @@ tm_shape(shp = cidades) +
   tm_shape(shp = acidentes)+
   tm_dots()
 
-cidades <- cidades %>% st_transform(4674)
-acidentes <- acidentes %>% st_transform(4674)
+cidades <- cidades %>% st_transform(4326)
+acidentes <- acidentes %>% st_transform(4326)
+cidades <- cidades %>% rename("municipio"="NM_MUNICIP")
 cidades_acidentes <- cidades  %>% 
   st_join(acidentes) 
-cidades_num_acidentes <- cidades_acidentes %>%
-  filter(municipio != "NA") %>%
-  group_by(municipio) %>%
-  tally()
+cidades_num_acidentes <- cidades %>% 
+  st_join(acidentes) %>%
+  group_by(municipio.x) %>%
+  summarize(total_acidentes = sum(!is.na(data_inversa))) %>%
+  filter(total_acidentes >= 1)  # Filtra apenas as cidades com pelo menos um acidente
 
 cidades_num_acidentes %>%
   ggplot() +
-  geom_sf(aes(fill=n))
-
+  geom_sf(aes(fill = total_acidentes)) +
+  scale_fill_gradient(low = "blue", high = "red") +
+  labs(fill = "Total de Acidentes")
 #outra forma:
 
 
-tm_shape(shp=acidentes)+
-  tm_dots(size = 0.01,alpha=0.3)+
-  tm_shape(shp=cidades_num_acidentes)+
-  tm_fill(col="n",alpha=0.4)+
-  tm_borders()
+tm_shape(shp = cidades_num_acidentes) +
+  tm_fill(col = "total_acidentes", alpha = 0.2) +
+  tm_borders() +
+  tm_shape(shp = acidentes) +
+  tm_dots(size = 0.01, alpha = 0.2)
